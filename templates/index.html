@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Grammar & Style Helper</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        max-width: 700px;
+        margin: 40px auto;
+        padding: 0 20px;
+        background: #f7f7f9;
+        color: #222;
+    }
+    h1 { font-size: 1.6rem; }
+    textarea {
+        width: 100%;
+        height: 160px;
+        padding: 12px;
+        font-size: 1rem;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+    }
+    button {
+        margin-top: 10px;
+        padding: 10px 20px;
+        font-size: 1rem;
+        background: #2d6cdf;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+    button:hover { background: #1f56b8; }
+    .section {
+        margin-top: 25px;
+        background: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .issue { margin-bottom: 12px; }
+    .bad-text { color: #c0392b; font-weight: bold; }
+    .suggestions { color: #27ae60; }
+    .weak-word { font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1>Grammar & Style Helper</h1>
+<p>Paste your text below and click "Check" to get grammar and word-choice suggestions.</p>
+
+<textarea id="inputText" placeholder="Type or paste your paragraph here..."></textarea><br>
+<button onclick="checkText()">Check</button>
+
+<div class="section">
+    <h3>Grammar Suggestions</h3>
+    <div id="grammarResults">Nothing checked yet.</div>
+</div>
+
+<div class="section">
+    <h3>Word Choice Suggestions</h3>
+    <div id="wordResults">Nothing checked yet.</div>
+</div>
+
+<script>
+async function checkText() {
+    const text = document.getElementById("inputText").value;
+    const grammarDiv = document.getElementById("grammarResults");
+    const wordDiv = document.getElementById("wordResults");
+
+    grammarDiv.innerHTML = "Checking...";
+    wordDiv.innerHTML = "Checking...";
+
+    const response = await fetch("/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+        grammarDiv.innerHTML = data.error;
+        wordDiv.innerHTML = "";
+        return;
+    }
+
+    // Render grammar issues
+    if (data.grammar_issues.length === 0) {
+        grammarDiv.innerHTML = "No grammar issues found. Nice work!";
+    } else {
+        grammarDiv.innerHTML = data.grammar_issues.map(issue => `
+            <div class="issue">
+                <div>${issue.message}</div>
+                ${issue.bad_text ? `<div class="bad-text">"${issue.bad_text}"</div>` : ""}
+                ${issue.suggestions.length ? `<div class="suggestions">Try: ${issue.suggestions.join(", ")}</div>` : ""}
+            </div>
+        `).join("");
+    }
+
+    // Render weak word suggestions
+    if (data.weak_words.length === 0) {
+        wordDiv.innerHTML = "No overused or weak words found.";
+    } else {
+        wordDiv.innerHTML = data.weak_words.map(w => `
+            <div class="issue">
+                <span class="weak-word">"${w.word}"</span> →
+                <span class="suggestions">${w.alternatives.join(", ")}</span>
+            </div>
+        `).join("");
+    }
+}
+</script>
+
+</body>
+</html>
